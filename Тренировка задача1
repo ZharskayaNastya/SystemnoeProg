@@ -1,0 +1,56 @@
+import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Введите первое положительное число: ");
+        int num1 = scanner.nextInt();
+        System.out.print("Введите второе положительное число: ");
+        int num2 = scanner.nextInt();
+
+        if (num1 < 0 || num2 < 0) {
+            System.out.println("Ошибка: числа должны быть положительными!");
+            return;
+        }
+
+        System.out.println("\nРезультаты умножения " + num1 + " × " + num2 + ":");
+        System.out.println("1. Через сложение в цикле (for): " + Umn1(num1, num2));
+        System.out.println("2. Через битовые сдвиги: " + Umn2(num1, num2));
+        System.out.println("3. Рекурсивно: " + Umn3(num1, num2));
+        System.out.println("4. Через логарифмы: " + Umn4(num1, num2));
+    }
+    // 1. Через обычное сложение в цикле
+    public static int Umn1(int a, int b) {
+        int result = 0;
+        for (int i = 0; i < b; i++) {
+            result += a;
+        }
+        return result;
+    }
+
+    // 2. Через битовые сдвиги
+    public static int Umn2(int a, int b) {
+        int result = 0;
+        while (b > 0) {
+            if ((b & 1) == 1) {  // Если младший бит = 1
+                result += a; // прибавляем к результату a
+            }
+            a <<= 1;  // Умножаем a на 2 (сдвиг влево)
+            b >>= 1;  // Делим b на 2 (сдвиг вправо)
+        }
+        return result;
+    }
+
+    // 3. Рекурсивное сложение
+    public static int Umn3(int a, int b) {
+        if (b == 0) return 0;
+        return a + Umn3(a, b - 1);
+    }
+
+    //4. Логарифмы
+    public static int Umn4(int a, int b) {
+        if (a == 0 || b == 0) return 0;
+        double result = Math.exp(Math.log(a) + Math.log(b));
+        return (int) Math.round(result);
+    }
+}

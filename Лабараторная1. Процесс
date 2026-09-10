@@ -1,25 +1,28 @@
-import java.util.Scanner;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 
 public class Main {
-    public static void main(String[] args) throws IOException {
-        Scanner sc = new Scanner(System.in);
 
-        for (int i = 1; i <= 3; i++) {   // Запускаем 3 процесса
+    public static void main(String[] args) throws IOException, InterruptedException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+
+        for (int i = 1; i <= 3; i++) {
             System.out.print("Введите имя процесса №" + i + " (notepad/calc/charmar/cmd/explorer/taskmgr): ");
-            String name = sc.nextLine();
+            String name = reader.readLine();
 
-            Process p = new ProcessBuilder(name).start();
+            Process process = startProcess(name);
+            if (process == null) {
+                continue;
+            }
 
-            System.out.println("Процесс запущен. PID = " + p.pid());
-            System.out.println("Работает? " + p.isAlive());
+            printProcessInfo(process, name);
 
             System.out.print("Завершить процесс? (да/нет): ");
-            String answer = sc.nextLine();
+            String answer = reader.readLine();
 
-            if (answer.equals("да")) {
-                p.destroy();
-                System.out.println("Процесс завершён.");
+            if (answer != null && answer.equalsIgnoreCase("да")) {
+                stopProcess(process);
             } else {
                 System.out.println("Процесс оставлен работать.");
             }
@@ -27,6 +30,36 @@ public class Main {
             System.out.println();
         }
 
-        System.out.println("Готово!");
+        reader.close();
     }
+
+    // Запуск процесса
+    public static Process startProcess(String name) throws IOException {
+        try {
+            Process process = new ProcessBuilder(name).start();
+            System.out.println("Процесс '" + name + "' запущен.");
+            return process;
+        } catch (IOException e) {
+            System.out.println("Не удалось запустить процесс '" + name + "': " + e.getMessage());
+            return null;
+        }
+    }
+
+    // Информация о процессе
+    public static void printProcessInfo(Process process, String name) {
+        System.out.println("   ИНФОРМАЦИЯ О ПРОЦЕССЕ   ");
+        System.out.println("Имя процесса: " + name);
+        System.out.println("PID: " + process.pid());
+        System.out.println("Живой: " + process.isAlive());
+        System.out.println();
+    }
+
+    // Завершение процесса
+    public static void stopProcess(Process process) throws InterruptedException {
+        process.destroy();
+        int exitVal = process.waitFor();
+        System.out.println("Процесс завершён. Код выхода: " + exitVal);
+        System.out.println("Живой после завершения: " + process.isAlive());
+    }
+}
 }

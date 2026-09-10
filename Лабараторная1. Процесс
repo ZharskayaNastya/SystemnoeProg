@@ -62,4 +62,4 @@ public class Main {
         System.out.println("Живой после завершения: " + process.isAlive());
     }
 }
-}
+

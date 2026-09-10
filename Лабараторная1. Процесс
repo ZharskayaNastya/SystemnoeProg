@@ -1,0 +1,32 @@
+import java.util.Scanner;
+import java.io.IOException;
+
+public class Main {
+    public static void main(String[] args) throws IOException {
+        Scanner sc = new Scanner(System.in);
+
+        for (int i = 1; i <= 3; i++) {   // Запускаем 3 процесса
+            System.out.print("Введите имя процесса №" + i + " (notepad/calc/charmar/cmd/explorer/taskmgr): ");
+            String name = sc.nextLine();
+
+            Process p = new ProcessBuilder(name).start();
+
+            System.out.println("Процесс запущен. PID = " + p.pid());
+            System.out.println("Работает? " + p.isAlive());
+
+            System.out.print("Завершить процесс? (да/нет): ");
+            String answer = sc.nextLine();
+
+            if (answer.equals("да")) {
+                p.destroy();
+                System.out.println("Процесс завершён.");
+            } else {
+                System.out.println("Процесс оставлен работать.");
+            }
+
+            System.out.println();
+        }
+
+        System.out.println("Готово!");
+    }
+}

@@ -8,7 +8,7 @@ public class Main {
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
         for (int i = 1; i <= 3; i++) {
-            System.out.print("Введите имя процесса №" + i + " (notepad/calc/charmar/cmd/explorer/taskmgr): ");
+            System.out.print("Введите имя процесса №" + i + " (notepad/calc/charmap/cmd/explorer/taskmgr): ");
             String name = reader.readLine();
 
             Process process = startProcess(name);

@@ -1,0 +1,134 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Scanner;
+
+public class Main {
+
+    // Константы
+    private static final int DIVISOR = 21;      // искомое число должно быть кратно 21
+    private static final int FACTOR_3 = 3;      // первый множитель разложения 21 = 3 * 7
+    private static final int FACTOR_7 = 7;      // второй множитель разложения 21 = 3 * 7
+    private static final int NOT_FOUND = -1;    // результат, если числа нет
+    private static final int INF = Integer.MAX_VALUE; // используется как "еще не встречалось"
+    private static final String FILE_PATH = "Посл поиск (1).txt"; // Путь к файлу
+
+    public static void main(String[] args) {
+        File file = new File(FILE_PATH); //создаем объект по указанному пути
+        // Проверка существования файла
+        if (!file.exists()) {
+            System.out.println("Файл не найден по пути: " + file.getAbsolutePath());
+            return;
+        }
+        //открываем файл
+        try (Scanner scanner = new Scanner(file, StandardCharsets.UTF_8)) {
+            System.out.println("Файл найден. Начинаем чтение...");
+
+            if (!scanner.hasNextInt()) { //есть ли числа?
+                System.out.println("Файл пуст или не содержит чисел.");
+                return;
+            }
+
+            int sequenceSize = scanner.nextInt(); // Первое число — количество элементов
+            System.out.println("В файле указано количество элементов: " + sequenceSize);
+
+            if (sequenceSize <= 0) {
+                System.out.println("Количество элементов должно быть положительным.");
+                return;
+            }
+
+            // Создаем массив по все числа последовательности
+            int[] sequence = new int[sequenceSize];
+            for (int i = 0; i < sequenceSize; i++) {
+                if (!scanner.hasNextInt()) { //если меньше, чем должно было
+                    System.out.println("В файле недостаточно чисел: ожидалось " +
+                            sequenceSize + ", прочитано " + i);
+                    return;
+                }
+                sequence[i] = scanner.nextInt(); //кладем в массив
+            }
+
+            System.out.println("Успешно считано " + sequenceSize + " чисел.");
+
+            // Запускаем основной алгоритм
+            int result = findMinimalProductMultipleOf21(sequence);
+
+            // Вывод с сообщением
+            if (result == NOT_FOUND) {
+                System.out.println("Подходящее произведение не найдено. Результат: " + NOT_FOUND);
+            } else {
+                System.out.println("Минимальное произведение, кратное " + DIVISOR + ": " + result);
+            }
+
+        } catch (FileNotFoundException e) {
+            System.out.println("FileNotFoundException: файл не найден — " + e.getMessage());
+        } catch (IOException e) {
+            System.out.println("IOException: ошибка при работе с файлом — " + e.getMessage());
+            e.printStackTrace();
+        } catch (Exception e) {
+            System.out.println("Неожиданная ошибка: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+/**
+ /**
+ * Однопроходный поиск минимального произведения двух различных элементов,
+ * кратного 21. Идея: 21 = 3 * 7, поэтому произведение x * y кратно 21,
+ * если выполнено хотя бы одно из условий:
+ *   - x кратен 21, y — любой;
+ *   - y кратен 21, x — любой;
+ *   - x кратен 3, y кратен 7;
+ *   - x кратен 7, y кратен 3.
+ *
+ * При проходе храним минимумы среди ранее встреченных элементов
+ * по каждой категории, а для каждого текущего элемента сразу проверяем
+ * все четыре случая. Минимумы обновляем ПОСЛЕ проверок, чтобы элемент
+ * не сравнился сам с собой.
+ */
+    public static int findMinimalProductMultipleOf21(int[] sequence) {
+        int minElement = INF;  // минимальный элемент вообще
+        int minDiv3 = INF;  // минимальный элемент, кратный 3
+        int minDiv7 = INF;  // минимальный элемент, кратный 7
+        int minDiv21 = INF;  // минимальный элемент, кратный 21
+        int result = INF;  // текущий лучший ответ
+
+        for (int x : sequence) {
+
+              // Случай 1: ранее встреченный элемент кратен 21 — x может быть любым
+        if (minDiv21 != INF) {
+            result = Math.min(result, x * minDiv21);
+        }
+
+              // Случай 2: текущий x кратен 21 — ранее встреченный может быть любым
+        if (x % DIVISOR == 0 && minElement != INF) {
+            result = Math.min(result, x * minElement);
+        }
+
+              // Случай 3: x кратен 3 — нужен ранее встреченный, кратный 7
+        if (x % FACTOR_3 == 0 && minDiv7 != INF) {
+            result = Math.min(result, x * minDiv7);
+        }
+
+              // Случай 4: x кратен 7 — нужен ранее встреченный, кратный 3
+        if (x % FACTOR_7 == 0 && minDiv3 != INF) {
+        result = Math.min(result, x * minDiv3);
+        }
+              // Обновляем минимумы ТОЛЬКО ПОСЛЕ проверок —
+              // иначе элемент мог бы сравниться сам с собой
+        minElement = Math.min(minElement, x);
+        if (x % DIVISOR == 0) {
+            minDiv21 = Math.min(minDiv21, x);
+        }
+        if (x % FACTOR_3 == 0) {
+            minDiv3 = Math.min(minDiv3, x);
+        }
+        if (x % FACTOR_7 == 0) {
+            minDiv7 = Math.min(minDiv7, x);
+        }
+    }
+        //если не нашли, возвращаем -1, иначе-найденное
+    return result == INF ? NOT_FOUND : result;
+ }
+}

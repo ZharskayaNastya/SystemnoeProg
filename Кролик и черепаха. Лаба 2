@@ -1,0 +1,60 @@
+// Класс наследуется от Thread, как требуется в задании
+class AnimalThread extends Thread {
+    private int distance = 0;          // Текущее пройденное расстояние
+    private final int maxDistance = 100; // Дистанция, которую нужно пробежать (метры)
+    private String name;               // Имя животного
+
+    // Конструктор принимает имя и приоритет
+    public AnimalThread(String name, int priority) {
+        this.name = name;
+        this.setPriority(priority); // Устанавливаем приоритет потока
+        this.setName(name);         // Устанавливаем имя потока
+    }
+
+    // Метод run() содержит логику, которую выполняет поток
+    @id86240433 (@Override)
+    public void run() {
+        while (distance < maxDistance) {
+            distance++; // Увеличиваем счетчик метров (шаг вперед)
+
+            // Выводим информацию о прогрессе
+            System.out.println(name + " пробежал: " + distance + " м.");
+
+            try {
+                // Небольшая задержка (имитация скорости бега), чтобы потоки чередовались
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                System.out.println(name + " был прерван.");
+            }
+
+            // --- ЛОГИКА ДИНАМИЧЕСКОГО ИЗМЕНЕНИЯ ПРИОРИТЕТА ---
+            // Если животное отстает (пробежало меньше 50% дистанции),
+            // мы можем повысить его приоритет, чтобы оно догнало соперника.
+            // Это требование последнего пункта задачи.
+            if (distance < maxDistance / 2) {
+                // Например, если отстает, даем максимальный приоритет
+                this.setPriority(Thread.MAX_PRIORITY);
+            } else {
+                // Если впереди, сбрасываем на нормальный
+                this.setPriority(Thread.NORM_PRIORITY);
+            }
+        }
+        System.out.println("=== " + name + " ФИНИШИРОВАЛ! ===");
+    }
+}
+class RabbitAndTurtle {
+    public static void main(String[] args) {
+        System.out.println("Начало гонки!");
+
+        // Создаем Кролика с высоким приоритетом (10 - максимум)
+        // Передаем имя и приоритет в конструктор
+        AnimalThread rabbit = new AnimalThread("Кролик", Thread.MAX_PRIORITY);
+
+        // Создаем Черепаху с низким приоритетом (1 - минимум)
+        AnimalThread turtle = new AnimalThread("Черепаха", Thread.MIN_PRIORITY);
+
+        // Запускаем потоки
+        rabbit.start();
+        turtle.start();
+    }
+}

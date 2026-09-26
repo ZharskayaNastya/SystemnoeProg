@@ -12,7 +12,7 @@ class AnimalThread extends Thread {
     }
 
     // Метод run() содержит логику, которую выполняет поток
-    @id86240433 (@Override)
+    @Override
     public void run() {
         while (distance < maxDistance) {
             distance++; // Увеличиваем счетчик метров (шаг вперед)

@@ -1,0 +1,58 @@
+import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.println("Введите элементы массива через пробел (например: 2 1 2 3 4 2 1 2 2):");
+
+        // Считываем всю строку целиком
+        String input = scanner.nextLine();
+
+        // Разбиваем строку по пробелам
+        String[] stringArray = input.trim().split("\\s+");
+
+        // Преобразуем строки в числа
+        int[] nums = new int[stringArray.length];
+        for (int i = 0; i < stringArray.length; i++) {
+            nums[i] = Integer.parseInt(stringArray[i]);
+        }
+
+        // Вызываем метод поиска
+        int result = findMajority(nums);
+
+        System.out.println("Мажоритарный элемент: " + result);
+
+        scanner.close();
+    }
+
+    public static int findMajority(int[] nums) {
+        if (nums.length == 0) return -1; // Защита от пустого массива
+
+        int candidate = 0;
+        int count = 0;
+
+        // Шаг 1: Поиск кандидата (алгоритм голосования Бойера-Мура)
+        for (int num : nums) {
+            if (count == 0) {
+                candidate = num;
+            }
+            count += (num == candidate) ? 1 : -1;
+        }
+
+        // Шаг 2: Проверка, что кандидат действительно мажоритарный
+        count = 0;
+        for (int num : nums) {
+            if (num == candidate) {
+                count++;
+            }
+        }
+
+        // Если элемент встречается больше половины раз, возвращаем его
+        if (count > nums.length / 2) {
+            return candidate;
+        } else {
+            return -1; // Если мажоритарного элемента нет
+        }
+    }
+}

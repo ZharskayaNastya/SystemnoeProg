@@ -1,0 +1,42 @@
+public class Main {
+    // Общая переменная: хранит имя потока, который сказал последнее слово
+    // volatile — чтобы оба потока видели актуальное значение сразу
+    static volatile String lastSpeaker = "";
+
+    public static void main(String[] args) {
+        // Создаем поток "Курица"
+        Thread chicken = new Thread(() -> {
+            for (int i = 0; i < 5; i++) {
+                System.out.println("Курица");
+                lastSpeaker = "Курица"; // фиксируем, что последним сказала Курица
+                try { Thread.sleep(100); } catch (InterruptedException e) {}
+            }
+        }, "Курица");
+
+        // Создаем поток "Яйцо"
+        Thread egg = new Thread(() -> {
+            for (int i = 0; i < 5; i++) {
+                System.out.println("Яйцо");
+                lastSpeaker = "Яйцо"; // фиксируем, что последним сказало Яйцо
+                try { Thread.sleep(100); } catch (InterruptedException e) {}
+            }
+        }, "Яйцо");
+
+        // Запускаем оба потока параллельно
+        chicken.start();
+        egg.start();
+
+        // Ждем завершения курицы
+        try { chicken.join(); } catch (InterruptedException e) {}
+
+        // Демонстрация isAlive(): курица уже мертва (join), проверяем яйцо
+        System.out.println("Курица жива? " + chicken.isAlive()); // всегда false
+        System.out.println("Яйцо живо?   " + egg.isAlive());     // true или false
+
+        // Ждем завершения яйца
+        try { egg.join(); } catch (InterruptedException e) {}
+
+        // Победитель — тот, кто сказал последнее слово (lastSpeaker)
+        System.out.println("Спор окончен. Победитель " + lastSpeaker);
+    }
+}

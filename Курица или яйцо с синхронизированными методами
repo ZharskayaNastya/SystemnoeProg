@@ -1,0 +1,65 @@
+public class Main {
+
+    // Чей сейчас ход: true — курица, false — яйцо
+    private boolean chickenTurn = true;
+    private String lastWord = "";
+    // Синхронизированный метод: говорит Курица
+    public synchronized void sayChicken() {
+        // Ждём своей очереди, пока не наступит ход курицы
+        while (!chickenTurn) {
+            try {
+                wait();                 // внутри synchronized-метода wait работает на this
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt(); // восстанавливаем флаг прерывания
+                return;
+            }
+        }
+        System.out.println("Курица");
+        lastWord = "Курица";
+        chickenTurn = false;            // передаём ход яйцу
+        notifyAll();                    // будим партнёра
+    }
+
+    // Синхронизированный метод: говорит Яйцо
+    public synchronized void sayEgg() {
+        while (chickenTurn) {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+        System.out.println("Яйцо");
+        lastWord = "Яйцо";
+        chickenTurn = true;             // передаём ход курице
+        notifyAll();
+    }
+
+    // Синхронизированный метод: получить победителя
+    public synchronized String getLastWord() {
+        return lastWord;
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        Main main = new Main();         // общий объект — на нём и синхронизация
+
+        Thread chickenThread = new Thread(() -> {
+            for (int i = 0; i < 5; i++) main.sayChicken();
+        });
+
+        Thread eggThread = new Thread(() -> {
+            for (int i = 0; i < 5; i++) main.sayEgg();
+        });
+
+        chickenThread.start();
+        eggThread.start();
+
+        chickenThread.join();
+        eggThread.join();
+
+        System.out.println();
+        System.out.println("Спор окончен.");
+        System.out.println("Победитель: " + main.getLastWord());
+    }
+}

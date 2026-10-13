@@ -1,0 +1,72 @@
+public class Main {
+
+    // Чей сейчас ход: true — курица, false — яйцо
+    private boolean chickenTurn = true;
+    private String lastWord = "";
+    //говорит Курица
+    public void sayChicken() {
+        
+        synchronized (this) { // Синхронизированный оператор — монитор this
+            // Ждём своей очереди, пока не наступит ход курицы
+            while (!chickenTurn) {
+                try {
+                    this.wait();            // ждём на this
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt(); // восстанавливаем флаг
+                    return;
+                }
+            }
+            System.out.println("Курица");
+            lastWord = "Курица";
+            chickenTurn = false;            // передаём ход яйцу
+            this.notifyAll();               // будим партнёра
+        }
+    }
+
+    // говорит Яйцо
+    public void sayEgg() {
+        synchronized (this) {
+            while (chickenTurn) {
+                try {
+                    this.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+            System.out.println("Яйцо");
+            lastWord = "Яйцо";
+            chickenTurn = true;             // передаём ход курице
+            this.notifyAll();
+        }
+    }
+
+    //метод: получить последнее слово
+    public String getLastWord() {
+        synchronized (this) {
+            return lastWord;
+        }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        Main main = new Main();             // общий объект — на нём синхронизация
+
+        Thread chickenThread = new Thread(() -> {
+            for (int i = 0; i < 5; i++) main.sayChicken();
+        });
+
+        Thread eggThread = new Thread(() -> {
+            for (int i = 0; i < 5; i++) main.sayEgg();
+        });
+
+        chickenThread.start();              // запускаем поток курицы
+        eggThread.start();                  // запускаем поток яйца
+
+        chickenThread.join();               // ждём завершения курицы
+        eggThread.join();                   // ждём завершения яйца
+
+        System.out.println();
+        System.out.println("Спор окончен.");
+        System.out.println("Победитель: " + main.getLastWord());
+    }
+}

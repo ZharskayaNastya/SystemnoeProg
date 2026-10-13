@@ -1,0 +1,66 @@
+public class Main {
+
+    // Общий объект для синхронизации потоков
+    private static final Object lock = new Object();
+    // Если true — очередь курицы
+    // Если false — очередь яйца
+    private static boolean chickenTurn = true;
+    private static String lastWord = "";
+
+    public static void main(String[] args) throws InterruptedException {
+
+        // Поток, который выводит слово «Курица»
+        Thread chickenThread = new Thread(() -> {
+            for (int i = 0; i < 5; i++) {
+                synchronized (lock) { //захватываем оюъект блокировки 
+                    // Если сейчас очередь яйца, курица ждёт
+                    while (!chickenTurn) {
+                        try {
+                            lock.wait(); // освобождаем lock и ждём уведомления
+                        } catch (InterruptedException e) {
+                            // Восстанавливаем статус прерывания потока
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                    }
+                    System.out.println("Курица");
+                    lastWord = "Курица";
+                    chickenTurn = false;
+                    lock.notifyAll(); // Уведомляем ожидающий поток
+                }
+            }
+        });
+
+        // Поток, который выводит слово «Яйцо»
+        Thread eggThread = new Thread(() -> {
+            for (int i = 0; i < 5; i++) {
+                synchronized (lock) {
+                    while (chickenTurn) {
+                        try {
+                            lock.wait(); // освобождаем lock и ждём уведомления
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                    }
+                    System.out.println("Яйцо");
+                    lastWord = "Яйцо";
+                    chickenTurn = true;// Передаём очередь курице
+                    lock.notifyAll();// Уведомляем ожидающий поток
+                }
+            }
+        });
+        chickenThread.start();
+        eggThread.start();
+        chickenThread.join();
+        eggThread.join();
+
+        // Проверяем, что оба потока завершили работу
+        if (!chickenThread.isAlive() && !eggThread.isAlive()) {
+            System.out.println();
+            System.out.println("Спор окончен.");
+            // Кто сказал последним — тот и победил
+            System.out.println("Победитель: " + lastWord);
+        }
+    }
+}

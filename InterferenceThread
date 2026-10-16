@@ -1,0 +1,30 @@
+package ru.demo.interference1;
+
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class InterferenceThread extends Thread {
+    private final InterferenceExample checker;
+
+    // БЫЛО: private static int i;  — обычный int, операция i++ неатомарна → потоки теряли инкременты
+    // СТАЛО: AtomicInteger — инкремент выполняется одной неделимой операцией, потерь нет.
+    // static — счётчик ОДИН общий на оба потока (поэтому в конце не надо складывать).
+    private static final AtomicInteger i = new AtomicInteger();
+
+    InterferenceThread(InterferenceExample checker) {
+        this.checker = checker;
+    }
+
+    public void run() {
+        while (!checker.stop()) {
+            // БЫЛО: i++;  — неатомарно (прочитать → прибавить → записать), два потока перезаписывали друг друга
+            // СТАЛО: атомарный инкремент без гонки данных
+            i.incrementAndGet();
+        }
+    }
+
+    int getI() {
+        // БЫЛО: return i;
+        // СТАЛО: получаем значение из AtomicInteger
+        return i.get();
+    }
+}

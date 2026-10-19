@@ -1,0 +1,39 @@
+import java.util.Scanner;
+public class Main {
+
+    public static int countChocolates(int budget, int price) {
+        final int K_BUY = 5;
+        final int WRAPPERS_PER_CHOCO = 3;
+        int bought = budget / price; // Шаг 1. Считаем, сколько шоколадок купили на все деньги.
+        int bonusForBought = bought / K_BUY; // Шаг 2. Считаем бонус за покупки: каждые 5 купленных дают +1 бесплатную.
+        int total = bought + bonusForBought;// Шаг 3. Общее количество шоколадок на данный момент
+        int wrappers = total;// Шаг 4. Каждая съеденная шоколадка даёт 1 фантик.
+
+        while (wrappers >= WRAPPERS_PER_CHOCO) { // Шаг 5. Крутим цикл, пока фантиков хватает на обмен (то есть >= 3).
+            // Сколько новых шоколадок можно получить за текущие фантики.
+            int freeFromWrappers = wrappers / WRAPPERS_PER_CHOCO;
+            total += freeFromWrappers;
+            wrappers = wrappers % WRAPPERS_PER_CHOCO + freeFromWrappers;// Обновляем количество фантиков:
+        }
+        return total;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Введи бюджет: ");
+        int budget = sc.nextInt();
+        System.out.print("Введи цену одной шоколадки: ");
+        int price = sc.nextInt();
+        if (price <= 0) {
+            System.out.println("Цена должна быть больше нуля!");
+            return;
+        }
+        if (budget < 0) {
+            System.out.println("Бюджет не может быть отрицательным!");
+            return;
+        }
+        int result = countChocolates(budget, price);
+
+        System.out.println("Всего шоколадок: " + result);
+    }
+}

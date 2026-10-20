@@ -1,0 +1,34 @@
+package ru.demo.interference1;
+
+/**
+ * Класс, управляющий потоками.
+ * Счётчик остановки защищён synchronized — гонки нет.
+ */
+class InterferenceExample {
+    private static final int HUNDRED_MILLION = 100_000_000;
+
+    // БЫЛО: private AtomicInteger counter = new AtomicInteger();
+    // СТАЛО: обычный int, но доступ к нему идёт только через synchronized-метод stop().
+    private int counter;
+
+    // synchronized (метод не static → блокировка по объекту this).
+    // Пока один поток внутри stop(), второй ждёт снаружи — поэтому ++counter
+    // (read → modify → write) выполняется целиком одним потоком, без потери данных.
+    synchronized boolean stop() {
+        return ++counter > HUNDRED_MILLION;
+    }
+
+    void example() throws InterruptedException {
+        InterferenceThread thread1 = new InterferenceThread(this);
+        InterferenceThread thread2 = new InterferenceThread(this);
+        thread1.start();
+        thread2.start();
+        thread1.join();
+        thread2.join();
+        System.out.println("Expected: " + HUNDRED_MILLION);
+        // i в InterferenceThread теперь static (общий на оба потока),
+        // поэтому getI() сразу даёт суммарный результат — складывать не нужно.
+        // getI() — static, поэтому вызываем через класс, а не через thread1.
+        System.out.println("Result: " + InterferenceThread.getI());
+    }
+}

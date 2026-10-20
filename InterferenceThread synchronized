@@ -1,0 +1,35 @@
+package ru.demo.interference1;
+
+public class InterferenceThread extends Thread {
+    private final InterferenceExample checker;
+
+    // БЫЛО: private static int i;  — обычный int, i++ неатомарна → потоки теряли инкременты
+    // СТАЛО: оставили обычный int, но доступ к нему только через synchronized-методы.
+    // static — счётчик ОДИН общий на оба потока (поэтому в конце не надо складывать).
+    private static int i;
+
+    InterferenceThread(InterferenceExample checker) {
+        this.checker = checker;
+    }
+
+    public void run() {
+        while (!checker.stop()) {
+            // БЫЛО: i++;  — неатомарно (read → modify → write), два потока перезаписывали друг друга
+            // СТАЛО: вызываем synchronized-метод — инкремент выполняется только одним потоком за раз
+            increment();
+        }
+    }
+
+    // synchronized на static-методе блокирует ПО КЛАССУ InterferenceThread:
+    // пока один поток внутри increment(), второй ждёт снаружи.
+    // Поэтому i++ выполняется целиком одним потоком — потерь нет.
+    private static synchronized void increment() {
+        i++;
+    }
+
+    // synchronized и на чтении — чтобы получить согласованное значение
+    // (и чтобы был happens-before между записью в потоке и чтением в main).
+    static synchronized int getI() {
+        return i;
+    }
+}

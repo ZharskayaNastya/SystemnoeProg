@@ -1,0 +1,61 @@
+// Собственный подкласс исключения (checked — наследник Exception).
+class InsufficientFundsException extends Exception {
+    double balance;   // сколько было на счёте
+    double amount;    // сколько пытались снять
+
+    // Конструктор вызывает super(message) и сохраняет свои поля
+    public InsufficientFundsException(String message, double balance, double amount) {
+        super(message);
+        this.balance = balance;
+        this.amount = amount;
+    }
+}
+
+class BankAccount {
+    private double balance;
+
+    public BankAccount(double balance) {
+        this.balance = balance;
+    }
+
+    // throws в сигнатуре — метод может выбросить checked-исключение,
+    // поэтому вызывающий обязан его обработать
+    public void withdraw(double amount) throws InsufficientFundsException {
+        if (amount > balance) {
+            // throw new ... — собственно выбрасывание исключения
+            throw new InsufficientFundsException(
+                    "Недостаточно средств на счёте",
+                    balance,
+                    amount
+            );
+        }
+        balance -= amount;
+        System.out.println("Снято: " + amount + ". Остаток: " + balance);
+    }
+
+    public double getBalance() {
+        return balance;
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        BankAccount account = new BankAccount(1000);
+
+        // try — код, который может выбросить исключение
+        try {
+            account.withdraw(300);   // пройдёт успешно
+            account.withdraw(1500);  // выбросит InsufficientFundsException,
+            // и выполнение try прервётся
+        } catch (InsufficientFundsException e) {
+            // catch — обработка конкретного типа исключения.
+            // Поля доступны напрямую: e.balance, e.amount
+            System.out.println("Ошибка: " + e.getMessage());
+            System.out.println("На счёте: " + e.balance);
+            System.out.println("Запрошено: " + e.amount);
+        } finally {
+            // finally — выполнится всегда, было исключение или нет
+            System.out.println("Итоговый баланс: " + account.getBalance());
+        }
+    }
+}

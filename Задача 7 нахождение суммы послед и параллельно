@@ -1,0 +1,84 @@
+import java.util.Random;
+
+public class Main {
+    public static void main(String[] args) throws InterruptedException {
+
+        // Генерация 1000 чисел
+        int[] numbers = new int[1000];
+        Random random = new Random();
+        for (int i = 0; i < numbers.length; i++) {
+            numbers[i] = random.nextInt(1000);
+        }
+
+        final int THREADS = 4;
+        final int CHUNK = 250;
+
+        long[] partialSums = new long[THREADS]; //каждый поток кладет сумму в свою ячейку. гонок нет.
+
+        Thread[] threads = new Thread[THREADS]; //ссылки на потоки
+
+        long startParal = System.nanoTime();
+
+        for (int i = 0; i < THREADS; i++) {
+
+            final int index = i; //в какую ячейку писать
+            final int start = i * CHUNK;
+            final int end = start + CHUNK;
+
+            threads[i] = new Thread(() -> {
+                long partialSum = 0;
+                for (int j = start; j < end; j++) { //суммируем свой диапазон
+                    partialSum += numbers[j];
+                }
+                partialSums[index] = partialSum; //пишем в свою ячейку
+            });
+            threads[i].start();
+        }
+
+        for (Thread th : threads) {
+            th.join(); //ждем завершения каждого потока
+        }
+
+        long sumParal = 0; //общая сумма
+
+        for (long p : partialSums) {
+            sumParal += p;
+        }
+
+        long endParal = System.nanoTime();
+        long timeParal = endParal - startParal;
+
+        System.out.println("Сумма (параллельно): " + sumParal);
+        System.out.println("Время выполнения: " + timeParal + " нс ("
+                + timeParal / 1_000_000.0 + " мс)");
+
+        long startPosl= System.nanoTime();
+        long sumPosl = 0;
+
+        for (int num : numbers) {
+            sumPosl += num;
+        }
+
+        long endPosl = System.nanoTime();
+        long timePosl = endPosl - startPosl;
+
+        System.out.println("Сумма (последовательно): " + sumPosl);
+        System.out.println("Время выполнения: " + timePosl + " нс ("
+                + timePosl / 1_000_000.0 + " мс)");
+
+        if(sumPosl==sumParal){
+            System.out.println("Суммы совпадают");
+        }
+        else {
+            System.out.println("Суммы не совпадают");
+        }
+
+        if (timeParal < timePosl) {
+            double times = (double) timePosl / timeParal;
+            System.out.println("Параллельно быстрее в " + times + " раз");
+        } else {
+            double times = (double) timeParal / timePosl;
+            System.out.println("Последовательно быстрее в " + times + " раз");
+        }
+    }
+}

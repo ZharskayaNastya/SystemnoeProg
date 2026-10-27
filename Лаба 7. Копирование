@@ -1,0 +1,92 @@
+import java.io.*;
+class CopyFiles {
+    //Копирует текстовый файл построчно.
+    //Используются буферизованные потоки, чтобы не читать/писать по одному символу
+
+    static void copyFile(String from, String to) throws IOException {
+        // try-with-resources автоматически закроет оба потока, даже если будет исключение
+        try (BufferedReader reader = new BufferedReader(new FileReader(from));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(to))) {
+
+            String line;
+            // читаем файл построчно, пока не дошли до конца (readLine вернёт null)
+            while ((line = reader.readLine()) != null) {
+                writer.write(line);   // пишем строку без перевода строки
+                writer.newLine();     // добавляем системный перевод строки (\n или \r\n)
+            }
+        }
+    }
+
+     // Создаёт тестовый файл с заданным числом строк, если его ещё нет.
+     //Нужно, чтобы при повторных запусках не генерировать файлы заново и сравнивать замеры на одинаковых данных.
+
+    static void createTestFile(String name, int lines) throws IOException {
+        File f = new File(name);
+        if (f.exists()) return;   // файл уже есть — не пересоздаём
+
+        try (BufferedWriter w = new BufferedWriter(new FileWriter(f))) {
+            for (int i = 1; i <= lines; i++) { // генерация содержимого тестового файла
+                w.write("Строка номер " + i + " текстового файла " + name);
+                w.newLine();
+            }
+        }
+    }
+
+    //Обёртка над copyFile: ловит IOException, чтобы её можно было вызывать
+     //из лямбды внутри Thread (там checked-исключения бросать нельзя).
+     //Заодно убирает дублирование try/catch в двух потоках.
+
+    static void safeCopy(String from, String to) {
+        try {
+            copyFile(from, to);
+        } catch (IOException e) {
+            System.out.println("Ошибка копирования " + from + ": " + e.getMessage());
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        String in1 = "file1.txt", in2 = "file2.txt";
+
+        // Готовим исходные данные: два файла по 2 000 000 строк (~150 МБ каждый).
+        // Если файлы уже существуют — они не пересоздаются.
+        createTestFile(in1, 2_000_000);
+        createTestFile(in2, 2_000_000);
+
+        // ПОСЛЕДОВАТЕЛЬНОЕ КОПИРОВАНИЕ
+        // Сначала копируем первый файл, дожидаемся окончания, потом второй.
+
+        long startSeq = System.nanoTime();
+        copyFile(in1, "copy_seq_1.txt");
+        copyFile(in2, "copy_seq_2.txt");
+        long seqTime = System.nanoTime() - startSeq;
+
+        // ПАРАЛЛЕЛЬНОЕ КОПИРОВАНИЕ
+        // Создаём два потока, каждый копирует свой файл.
+
+        Thread t1 = new Thread(() -> safeCopy(in1, "copy_par_1.txt"));
+        Thread t2 = new Thread(() -> safeCopy(in2, "copy_par_2.txt"));
+
+        // Замеряем время именно от запуска потоков до завершения обоих
+        long startPar = System.nanoTime();
+        t1.start();
+        t2.start();
+        t1.join();   // ждём первый поток
+        t2.join();   // ждём второй поток
+        long parTime = System.nanoTime() - startPar;
+
+        // nanoTime даёт наносекунды; делим на 1_000_000.0, чтобы получить мс
+        System.out.println("Последовательно: " + (seqTime / 1_000_000) + " мс");
+        System.out.println("Параллельно:     " + (parTime / 1_000_000) + " мс");
+
+        // Сравниваем и говорим, кто быстрее.
+        if (parTime < seqTime){
+            System.out.println("Параллельное быстрее");
+        }
+        else if (parTime > seqTime){
+            System.out.println("Последовательное быстрее");
+        }
+        else  {
+            System.out.println("Одинаково");
+        }
+    }
+}

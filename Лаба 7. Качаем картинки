@@ -1,0 +1,69 @@
+import java.io.*;
+import java.net.URL;
+import java.util.Scanner;
+
+public class Main {
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.println("СКАЧИВАНИЕ КАРТИНОК");
+
+        // Просим ссылку с клавиатуры
+        System.out.print("Вставь ссылку на картинку: ");
+        String url = scanner.nextLine().trim();
+
+        // Просим имя файла с расширением картинки
+        System.out.print("Как назвать файл? (например, image.jpg): ");
+        String fileName = scanner.nextLine().trim();
+
+        // Проверка на пустой ввод
+        if (url.isEmpty() || fileName.isEmpty()) {
+            System.out.println("ОШИБКА: Пустая ссылка или имя файла!");
+            return;
+        }
+
+        // Вызываем метод скачивания (он у нас переиспользуется из ЛР 6)
+        try {
+            download(url, fileName);
+            System.out.println("\nГОТОВО! Картинка сохранена как: " + fileName);
+        } catch (Exception e) {
+            System.out.println("\nОШИБКА: " + e.getMessage());
+        }
+    }
+
+
+    // метод из ЛР 6 "Качаем музыку"
+    // Он абсолютно не изменился. Ему всё равно, что качать — музыку или картинку, он просто перекладывает байты.
+
+    public static void download(String urlString, String fileName) throws IOException {
+
+        // Открываем поток для чтения из интернета
+        BufferedInputStream in = new BufferedInputStream(new URL(urlString).openStream());
+        // Открываем поток для записи в файл
+        FileOutputStream out = new FileOutputStream(fileName);
+
+        try {
+            byte[] data = new byte[1024]; // Читаем по 1 КБ
+            int count;
+            long total = 0;
+
+            System.out.println("Качаю...");
+
+            // Читаем, пока не кончится файл (-1 значит конец)
+            while ((count = in.read(data, 0, 1024)) != -1) {
+                out.write(data, 0, count); // Записываем в файл
+                total += count;            // Считаем скачанное
+
+                // Показываем прогресс в КБ
+                System.out.print("\rСкачано: " + (total / 1024) + " КБ");
+            }
+            System.out.println(); // Перенос строки после окончания загрузки
+
+        } finally {
+            // Закрываем потоки
+            if (in != null) in.close();
+            if (out != null) out.close();
+        }
+    }
+}

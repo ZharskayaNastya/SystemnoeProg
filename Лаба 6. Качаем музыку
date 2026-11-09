@@ -1,0 +1,60 @@
+import java.io.*;
+import java.net.URL;
+import java.util.Scanner;
+
+public class Main {
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("СКАЧИВАНИЕ МУЗЫКИ");
+        System.out.print("Вставь ссылку на mp3: ");
+        String url = scanner.nextLine().trim();
+        System.out.print("Как назвать файл? (например, song.mp3): ");
+        String fileName = scanner.nextLine().trim();
+        //Проверка на пустой ввод
+        if (url.isEmpty() || fileName.isEmpty()) {
+            System.out.println("ОШИБКА: Пустая ссылка или имя файла!");
+            return;
+        }
+
+        // Вызываем метод скачивания
+        try {
+            download(url, fileName);
+            System.out.println("\nГОТОВО! Файл сохранен.");
+        } catch (Exception e) {
+            System.out.println("\nОШИБКА: " + e.getMessage());
+        }
+    }
+
+    // Метод скачивания
+    public static void download(String urlString, String fileName) throws IOException {
+
+        // Открываем поток для чтения из интернета
+        BufferedInputStream in = new BufferedInputStream(new URL(urlString).openStream());
+        // Открываем поток для записи в файл
+        FileOutputStream out = new FileOutputStream(fileName);
+
+        try {
+            byte[] data = new byte[1024]; // Читаем по 1 КБ
+            int count;
+            long total = 0;
+
+            System.out.println("Качаю...");
+
+            // Читаем, пока не кончится файл (-1 значит конец)
+            while ((count = in.read(data, 0, 1024)) != -1) {
+                out.write(data, 0, count); // Записываем в файл
+                total += count;            // Считаем скачанное
+
+                //показываем, сколько скачали
+                System.out.print("\rСкачано: " + (total / 1024) + " КБ");
+            }
+            System.out.println(); // Перенос строки
+
+        } finally {
+            // закрываем потоки
+            if (in != null) in.close();
+            if (out != null) out.close();
+        }
+    }
+}

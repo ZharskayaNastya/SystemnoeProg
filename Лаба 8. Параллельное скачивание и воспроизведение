@@ -1,0 +1,112 @@
+import java.io.*;
+import java.net.URL;
+import java.util.Scanner;
+import javazoom.jl.player.Player; // Импортируем плеер из библиотеки
+
+public class Main {
+    public static void main(String[] args) {
+
+        // 1. Читаем данные из файла input.txt
+        String imageUrl = "";
+        String imagePath = "";
+        String mp3Url = "";
+        String mp3Path = "";
+
+        try (Scanner scanner = new Scanner(new File("input.txt"))) {
+            // Читаем первую строку (картинка)
+            if (scanner.hasNextLine()) {
+                String[] parts = scanner.nextLine().split(" ");
+                if (parts.length >= 2) {
+                    imageUrl = parts[0];
+                    imagePath = parts[1];
+                }
+            }
+            // Читаем вторую строку (музыка)
+            if (scanner.hasNextLine()) {
+                String[] parts = scanner.nextLine().split(" ");
+                if (parts.length >= 2) {
+                    mp3Url = parts[0];
+                    mp3Path = parts[1];
+                }
+            }
+        } catch (FileNotFoundException e) {
+            System.out.println("ОШИБКА: Файл input.txt не найден!");
+            return;
+        }
+
+        System.out.println("Начинаем параллельное скачивание...");
+
+        // 2. Создаем два потока для одновременного скачивания
+        final String finalImageUrl = imageUrl;
+        final String finalImagePath = imagePath;
+        final String finalMp3Url = mp3Url;
+        final String finalMp3Path = mp3Path;
+        // Поток для картинки
+        Thread imageThread = new Thread(() -> {
+            try {
+                download(finalImageUrl, finalImagePath);
+                System.out.println("[ПОТОК КАРТИНКИ] Готово! Картинка скачана в: " + finalImagePath);
+            } catch (Exception e) {
+                System.out.println("[ПОТОК КАРТИНКИ] ОШИБКА: " + e.getMessage());
+            }
+        });
+
+        // Поток для музыки
+        Thread musicThread = new Thread(() -> {
+            try {
+                download(finalMp3Url, finalMp3Path);
+                System.out.println("[ПОТОК МУЗЫКИ] Готово! Музыка скачана в: " + finalMp3Path);
+            } catch (Exception e) {
+                System.out.println("[ПОТОК МУЗЫКИ] ОШИБКА: " + e.getMessage());
+            }
+        });
+
+        // 3. Запускаем оба потока одновременно!
+        imageThread.start();
+        musicThread.start();
+
+        // 4. Ждем, пока поток с музыкой полностью завершит работу
+        try {
+            musicThread.join(); // Главный поток "замирает", пока musicThread не закончит
+
+            // 5. Воспроизводим музыку
+            System.out.println("\nВоспроизводим скачанную музыку...");
+            playMusic(mp3Path);
+
+        } catch (InterruptedException e) {
+            System.out.println("Скачивание музыки было прервано: " + e.getMessage());
+        }
+    }
+
+    // Метод скачивания (берем из наших прошлых лаб)
+    public static void download(String urlString, String fileName) throws IOException {
+        URL url = new URL(urlString);
+        BufferedInputStream in = new BufferedInputStream(url.openStream());
+        FileOutputStream out = new FileOutputStream(fileName);
+
+        try {
+            byte[] data = new byte[1024];
+            int count;
+            while ((count = in.read(data, 0, 1024)) != -1) {
+                out.write(data, 0, count);
+            }
+        } finally {
+            if (in != null) in.close();
+            if (out != null) out.close();
+        }
+    }
+
+    // Метод для воспроизведения музыки с помощью библиотеки javazoom
+    public static void playMusic(String mp3FilePath) {
+        try {
+            // Открываем скачанный файл
+            FileInputStream fis = new FileInputStream(mp3FilePath);
+            // Создаем плеер
+            Player player = new Player(fis);
+            // Играем (метод play() блокирует поток, пока музыка не доиграет до конца)
+            player.play();
+        } catch (Exception e) {
+            System.out.println("Ошибка воспроизведения: " + e.getMessage());
+        }
+    }
+}

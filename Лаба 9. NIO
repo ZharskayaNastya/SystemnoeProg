@@ -1,0 +1,114 @@
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousFileChannel;
+import java.nio.channels.CompletionHandler;
+import java.nio.channels.FileChannel;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+
+public class Main {
+    public static void main(String[] args) {
+        // 1. Создаем тестовый файл, чтобы было что копировать
+        Path source = Paths.get("source.txt");
+        Path destSync = Paths.get("dest_sync.txt");
+        Path destAsync = Paths.get("dest_async.txt");
+
+        try {
+            // Записываем что-то в исходный файл
+            java.nio.file.Files.writeString(source, "Привет! Это тест NIO копирования. Строка 1.\nСтрока 2.");
+
+            System.out.println("Начинаем СИНХРОННОЕ копирование");
+            copySync(source, destSync);
+            System.out.println("Синхронное готово. Файл создан: " + destSync.toAbsolutePath());
+
+            System.out.println("\nНачинаем АСИНХРОННОЕ копирование");
+            copyAsync(source, destAsync);
+
+            // Ждем 1 секунду, чтобы асинхронный поток успел закончить (для демонстрации)
+            Thread.sleep(1000);
+            System.out.println("Асинхронное готово. Файл создан: " + destAsync.toAbsolutePath());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 1. СИНХРОННОЕ КОПИРОВАНИЕ просто и понятно
+
+    public static void copySync(Path from, Path to) throws IOException {
+        // Открываем два канала: один на чтение, другой на запись
+        try (FileChannel in = FileChannel.open(from, StandardOpenOption.READ);
+             FileChannel out = FileChannel.open(to, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
+
+            ByteBuffer buffer = ByteBuffer.allocate(1024); // Буфер на 1 КБ
+            int bytesRead;
+
+            // Читаем, пока не дойдем до конца файла (-1)
+            while ((bytesRead = in.read(buffer)) != -1) {
+                buffer.flip(); // Переключаем буфер на чтение
+
+                // Пока в буфере есть данные — пишем их в файл
+                while (buffer.hasRemaining()) {
+                    out.write(buffer);
+                }
+                buffer.clear(); // Очищаем буфер для следующего куска
+            }
+        }
+    }
+
+    // 2. АСИНХРОННОЕ КОПИРОВАНИЕ (копирует файл любого размера)
+
+    public static void copyAsync(Path from, Path to) throws IOException {
+        // Открываем асинхронные каналы (не закрываем здесь — закроем в колбэке)
+        AsynchronousFileChannel in = AsynchronousFileChannel.open(from, StandardOpenOption.READ);
+        AsynchronousFileChannel out = AsynchronousFileChannel.open(to, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+
+        ByteBuffer buffer = ByteBuffer.allocate(1024);
+        // Запускаем цепочку: читаем кусок → пишем → читаем следующий
+        readNextChunk(in, out, buffer, 0);
+    }
+
+    // Рекурсивно копирует файл кусками: читает с позиции position,
+    // пишет в ту же позицию, затем запускает следующий кусок.
+    private static void readNextChunk(AsynchronousFileChannel in, AsynchronousFileChannel out,
+                                      ByteBuffer buffer, long position) {
+        // Асинхронное чтение: когда закончится — вызовется completed()
+        in.read(buffer, position, buffer, new CompletionHandler<Integer, ByteBuffer>() {
+            @Override
+            public void completed(Integer result, ByteBuffer buff) {
+                if (result == -1) {
+                    // Достигнут конец файла — закрываем каналы и выходим
+                    try { in.close(); out.close(); } catch (IOException e) { e.printStackTrace(); }
+                    return;
+                }
+
+                buff.flip(); // Переключаем буфер на чтение
+
+                // Асинхронная запись прочитанного куска
+                out.write(buff, position, buff, new CompletionHandler<Integer, ByteBuffer>() {
+                    @Override
+                    public void completed(Integer written, ByteBuffer b) {
+                        b.clear(); // Очищаем буфер
+                        // Читаем следующий кусок со сдвигом на количество прочитанных байт
+                        readNextChunk(in, out, b, position + result);
+                    }
+
+                    // Обработчик ошибки ЗАПИСИ.
+                    @Override
+                    public void failed(Throwable exc, ByteBuffer b) {
+                        exc.printStackTrace();
+                        try { in.close(); out.close(); } catch (IOException e) { e.printStackTrace(); }
+                    }
+                });
+            }
+
+            // Обработчик ошибки ЧТЕНИЯ.
+            @Override
+            public void failed(Throwable exc, ByteBuffer buff) {
+                exc.printStackTrace();
+                try { in.close(); out.close(); } catch (IOException e) { e.printStackTrace(); }
+            }
+        });
+    }
+}

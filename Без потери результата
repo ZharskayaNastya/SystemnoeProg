@@ -1,0 +1,62 @@
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class InterferenceExample {
+
+    private static final int LIMIT = 100_000_000;
+
+    private final AtomicInteger stop = new AtomicInteger();
+    private final AtomicInteger counter = new AtomicInteger();
+
+    boolean isFinished() {
+        return stop.incrementAndGet() > LIMIT;
+    }
+
+    void addCounter() {
+        counter.incrementAndGet();
+    }
+
+    int getCounter() {
+        return counter.get();
+    }
+
+    void startExample() throws InterruptedException {
+        MyThread thread1 = new MyThread(this);
+        MyThread thread2 = new MyThread(this);
+
+        long start = System.currentTimeMillis();
+
+        thread1.start();
+        thread2.start();
+
+        thread1.join();
+        thread2.join();
+
+        long end = System.currentTimeMillis();
+
+        System.out.println("Ожидаемое количество: " + LIMIT);
+        System.out.println("Время работы: " + (end - start) + " мс");
+        System.out.println("Получилось: " + getCounter());
+        System.out.println("Потеряно прибавлений: " + (LIMIT - getCounter()));
+    }
+
+    public static class MyThread extends Thread {
+
+        private final InterferenceExample example;
+
+        MyThread(InterferenceExample example) {
+            this.example = example;
+        }
+
+        @Override
+        public void run() {
+            while (!example.isFinished()) {
+                example.addCounter();
+            }
+        }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        InterferenceExample example = new InterferenceExample();
+        example.startExample();
+    }
+}

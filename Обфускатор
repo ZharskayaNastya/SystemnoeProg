@@ -1,0 +1,184 @@
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.util.*;
+
+public class Main {
+    public static void main(String[] args) throws Exception {
+        // Читаем путь к папке с клавиатуры
+        Scanner sc = new Scanner(System.in);
+        Path dir = Paths.get(sc.nextLine().trim());
+
+        // Берём первый попавшийся .java-файл в папке
+        Path src;
+        try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir, "*.java")) {
+            src = ds.iterator().next();
+        }
+
+        // Читаем весь файл как UTF-8
+        String code = new String(Files.readAllBytes(src), StandardCharsets.UTF_8);
+
+        //Подзадачи 1 и 2: удаляем комментарии и пробелы
+        // Разбиваем код на токены и выбрасываем COMMENT и WS.
+        List<Tok> list = new ArrayList<>();
+        for (Tok t : Tok.split(code)) {
+            if (t.kind != Tok.COMMENT && t.kind != Tok.WS) list.add(t);
+        }
+
+        //Подзадача 3: ищем имя класса
+        // Идём по токенам, находим ключевое слово "class", а следующий за ним токен — это имя класса.
+        String cls = null;
+        for (int i = 0; i < list.size() - 1; i++) {
+            if (list.get(i).kind == Tok.KEYWORD
+                    && list.get(i).text.equals("class")) {
+                cls = list.get(i + 1).text;
+                break;
+            }
+        }
+        if (cls == null) { System.out.println("Класс не найден"); return; }
+
+        //Подзадача 4: собираем идентификаторы для переименования
+        // LinkedHashSet — порядок первого появления, без дубликатов.
+        Set<String> ids = new LinkedHashSet<>();
+        for (Tok t : list) if (t.kind == Tok.IDENT) ids.add(t.text);
+
+        ids.remove(cls); // Имя класса переименуем отдельно (в "A"), поэтому убираем его из набора
+
+        // Карта замен: старое имя -> новое имя
+        Map<String, String> map = new HashMap<>();
+        map.put(cls, "A"); // класс всегда становится "A"
+        int n = 0;
+        // Остальным идентификаторам даём a, b, c, ... (см. name())
+        for (String id : ids) map.put(id, name(n++));
+
+        //Сборка результата
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < list.size(); i++) {
+            Tok t = list.get(i);
+
+            // Если это идентификатор и для него есть правило — заменяем имя.
+            // Конструкторы заменятся автоматически
+            if (t.kind == Tok.IDENT && map.containsKey(t.text)) t.text = map.get(t.text);
+
+            // Пробел ставим только между двумя "словами"
+            if (i > 0 && word(list.get(i - 1)) && word(t)) sb.append(' ');
+
+            sb.append(t.text);
+        }
+
+        //Подзадача 3: запись под новым именем файла
+        Path out = dir.resolve("A.java");
+        Files.write(out, sb.toString().getBytes(StandardCharsets.UTF_8));
+        // Удаляем исходный файл, если его имя отличается от нового
+        if (!src.equals(out)) Files.delete(src);
+    }
+
+    // "Слово" — то, что при склейке без пробела образует один токен
+    static boolean word(Tok t) {
+        return t.kind == Tok.IDENT || t.kind == Tok.KEYWORD || t.kind == Tok.NUMBER;
+    }
+
+    // Генерация имени по номеру: 0->a, 25->z, 26->aa, 27->ab, ...
+    static String name(int i) {
+        StringBuilder b = new StringBuilder();
+        do {
+            b.insert(0, (char) ('a' + i % 26));
+            i = i / 26 - 1;
+        } while (i >= 0);
+        return b.toString();
+    }
+}
+
+
+class Tok {
+    static final int IDENT = 0;   // идентификатор
+    static final int KEYWORD = 1; // ключевое слово
+    static final int COMMENT = 2; // комментарий
+    static final int WS = 3;      // пробелы и переводы строк
+    static final int NUMBER = 4;  // число
+    static final int OTHER = 5;   // всё прочее
+
+    int kind;    // тип токена
+    String text; // текст токена
+
+    Tok(int kind, String text) { this.kind = kind; this.text = text; }
+
+    // Множество ключевых слов Java.
+    // Если слово есть здесь — токен получает тип KEYWORD, иначе IDENT.
+    static Set<String> KW = new HashSet<>(Arrays.asList(
+            "abstract","boolean","break","byte","case","catch","char","class","continue",
+            "default","do","double","else","enum","extends","final","finally","float","for",
+            "if","implements","import","instanceof","int","interface","long","native","new",
+            "package","private","protected","public","return","short","static","super",
+            "switch","synchronized","this","throw","throws","transient","try","void",
+            "volatile","while","true","false","null"));
+
+    // Разбивает строку с кодом на список токенов.
+    // Проходит посимвольно и на каждом шаге решает, что за токен начинается.
+    static List<Tok> split(String s) {
+        List<Tok> r = new ArrayList<>();
+        int i = 0, n = s.length();
+
+        while (i < n) {
+            char c = s.charAt(i);
+            char c1 = i + 1 < n ? s.charAt(i + 1) : '\0'; // следующий символ (если есть)
+
+            // собираем всю последовательность
+            if (Character.isWhitespace(c)) {
+                int j = i;
+                while (j < n && Character.isWhitespace(s.charAt(j))) j++;
+                r.add(new Tok(WS, s.substring(i, j)));
+                i = j;
+            }
+            // Однострочный комментарий
+            else if (c == '/' && c1 == '/') {
+                int j = s.indexOf('\n', i);
+                if (j < 0) j = n; // если перевода строки нет — до конца файла
+                r.add(new Tok(COMMENT, s.substring(i, j)));
+                i = j;
+            }
+            //  Многострочный комментарий
+            else if (c == '/' && c1 == '*') {
+                int j = s.indexOf("*/", i + 2);
+                j = j < 0 ? n : j + 2; // если закрывающего */ нет — до конца файла
+                r.add(new Tok(COMMENT, s.substring(i, j)));
+                i = j;
+            }
+            //Строковый или символьный литерал
+            // Берём целиком
+            else if (c == '"' || c == '\'') {
+                int j = i + 1;
+                while (j < n && s.charAt(j) != c) {
+                    if (s.charAt(j) == '\\') j++; // пропускаем экранированный символ
+                    j++;
+                }
+                j = Math.min(j + 1, n);
+                r.add(new Tok(OTHER, s.substring(i, j)));
+                i = j;
+            }
+            // Идентификатор или ключевое слово
+            else if (Character.isJavaIdentifierStart(c)) {
+                int j = i;
+                while (j < n && Character.isJavaIdentifierPart(s.charAt(j))) j++;
+                String w = s.substring(i, j);
+                // Если слово в списке ключевых — KEYWORD, иначе IDENT
+                r.add(new Tok(KW.contains(w) ? KEYWORD : IDENT, w));
+                i = j;
+            }
+            // Число: цифры, буквы, точка
+            else if (Character.isDigit(c)) {
+                int j = i;
+                while (j < n && (Character.isLetterOrDigit(s.charAt(j))
+                        || s.charAt(j) == '.')) j++;
+                r.add(new Tok(NUMBER, s.substring(i, j)));
+                i = j;
+            }
+            // Всё остальное
+            else {
+                r.add(new Tok(OTHER, String.valueOf(c)));
+                i++;
+            }
+        }
+        return r;
+    }
+}
